@@ -1,5 +1,5 @@
 <html><head>
-  <link rel="stylesheet" type="text/css" href="//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
+  <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
   <style type="text/css">
     .dataTables_filter { float: left; }
     table { font-size: 13px; }
@@ -48,8 +48,8 @@
 
 ?>
 
-<script src="//ajax.aspnetcdn.com/ajax/jquery/jquery-1.9.0.min.js"></script>
-<script src="//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jquery/jquery-1.9.0.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
 <script type="text/javascript">
   $(function(){
     $('table').dataTable({
