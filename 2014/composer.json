@@ -1,0 +1,12 @@
+{
+    "name": "lyoshenka/ampstats2014",
+    "authors": [
+        {
+            "name": "Alex Grintsvayg",
+            "email": "lyoshenka@gmail.com"
+        }
+    ],
+    "require": {
+        "league/csv": "5.*"
+    }
+}
