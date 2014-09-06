@@ -13,8 +13,16 @@ const DBPASS = 'FILL-ME-IN';
 
 $pdo = new PDO('mysql:dbname='.DBNAME.';host='.DBHOST.';port='.DBPORT,DBUSER,DBPASS);
 
-import($pdo);
+//import($pdo);
 //continuation($pdo);
+d_efficiency($pdo);
+
+
+function d_efficiency($pdo)
+{
+
+}
+
 
 function continuation($pdo)
 {
@@ -236,11 +244,27 @@ function import($pdo)
 return;
   
   // our turns per point
-  $pdo->exec("update point p LEFT JOIN (select p.id, sum(if(p.line = SUBSTRING(e.type, 1, 1) and action in ('Drop','Stall','Throwaway'), 1, 0)) as turns from event e inner join point p on e.point_id = p.id group by p.id) x on p.id = x.id set p.our_turns = x.turns where p.our_turns is null");
+  $pdo->exec("update point p LEFT JOIN (select p.id, sum(if(e.type = 'Offense' and action in ('Drop','Stall','Throwaway','MiscPenalty'), 1, 0)) as turns from event e inner join point p on e.point_id = p.id group by p.id) x on p.id = x.id set p.our_turns = x.turns");
   // their turns per point
-  $pdo->exec("update point p LEFT JOIN (select p.id, sum(if(p.line != SUBSTRING(e.type, 1, 1) and action in ('Drop','Stall','Throwaway'), 1, 0)) as turns from event e inner join point p on e.point_id = p.id group by p.id) x on p.id = x.id set p.their_turns = x.turns where p.their_turns is null");
+  $pdo->exec("update point p LEFT JOIN (select p.id, sum(if(e.type = 'Defense' and action in ('D','Throwaway'), 1, 0)) as turns from event e inner join point p on e.point_id = p.id group by p.id) x on p.id = x.id set p.their_turns = x.turns");
   
   // set we_scored
-  $pdo->exec("update point p inner join event e on p.id = e.point_id and e.action = 'Goal' and p.line = SUBSTRING(e.type, 1, 1) set p.we_scored = 1;");
+  $pdo->exec("update point p inner join event e on p.id = e.point_id and e.action = 'Goal' and e.type = 'Offense' set p.we_scored = 1;");
+
+  // fix team name  
+  $pdo->exec("update point set opponent = 'SHUYAMOUF' where opponent in ('Shuyomouf', 'Shuyamouf')");
+  
+  
+  
+  // queries
+  
+  // total possessions per game
+  // select game_id, tournament, opponent, sum(their_turns + IF(line = 'O',1,0)) as our_possessions, concat(max(our_score),'-',max(their_score)) as final_score from point p group by game_id;
+  
+  // multiple O possessions
+  // select id, tournament,opponent, their_turns+1 as possessions, IF(we_scored,'us','them') as who_scored, concat(our_score,'-',their_score) as score, p1, p2, p3, p4, p5, p6, p7, p8 from point where line = 'O' having possessions > 1;
+
+  // one-turn O points
+  // select id, tournament,opponent, concat(our_score,'-',their_score) as score, p1, p2, p3, p4, p5, p6, p7, p8 from point where line = 'O' and their_turns = 0 and our_turns = 1
   
 }
