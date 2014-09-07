@@ -15,12 +15,105 @@ $pdo = new PDO('mysql:dbname='.DBNAME.';host='.DBHOST.';port='.DBPORT,DBUSER,DBP
 
 //import($pdo);
 //continuation($pdo);
-d_efficiency($pdo);
+
+// offense
+//$table = efficiency($pdo->query('SELECT * FROM point WHERE line = "O" and our_turns > 0')->fetchAll(PDO::FETCH_ASSOC));
+//echo "On O points they played where we turned it at least once, how likely were we to force at least one turnover?\n";
+//printTable($table, ['Tournament', 'Opponent', 'Player', 'Ds', 'Points', 'Percent']);
+
+// defense 
+//$table = efficiency($pdo->query('SELECT * FROM point WHERE line = "D"')->fetchAll(PDO::FETCH_ASSOC));
+//echo "On D points they played, how likely were we to force at least one turnover?\n";
+//printTable($table, ['Tournament', 'Opponent', 'Player', 'Ds', 'Points', 'Percent']);
 
 
-function d_efficiency($pdo)
+
+
+
+function efficiency($data)
 {
+  $currTournament = null;
+  $currOpponent = null;
+  $currGame = null;
+  $players = [];
+  $tourneyPlayers = [];
+  foreach($data as $row)
+  {
+    if ($currGame != $row['game_id'])
+    {
+      if ($currGame)
+      {
+        $tournaments[$currTournament][$currOpponent] = $players;
+        $players = [];
+      }
+      if ($currTournament && $row['tournament'] != $currTournament)
+      {
+        $tournaments[$currTournament]['Overall'] = $tourneyPlayers;
+        $tourneyPlayers = [];
+      }
+    
+      $currTournament = $row['tournament'];
+      $currOpponent = $row['opponent'];
+      $currGame = $row['game_id'];
+    }
 
+    foreach(range(1,9) as $n)
+    {
+      if (!$row["p$n"])
+      {
+        continue;
+      }
+    
+      if (!isset($players[$row["p$n"]]))
+      {
+        $players[$row["p$n"]] = ['points' => 0, 'ds' => 0];
+      }
+      if (!isset($tourneyPlayers[$row["p$n"]]))
+      {
+        $tourneyPlayers[$row["p$n"]] = ['points' => 0, 'ds' => 0];
+      }
+      
+      $players[$row["p$n"]]['points']++;
+      $tourneyPlayers[$row["p$n"]]['points']++;
+      if ($row['their_turns'] > 0)
+      {
+        $players[$row["p$n"]]['ds']++;
+        $tourneyPlayers[$row["p$n"]]['ds']++;      
+      }
+    }
+  }
+  
+  $tournaments[$currTournament][$currOpponent] = $players;
+  $tournaments[$currTournament]['Overall'] = $tourneyPlayers;
+
+
+  $table = [];
+  foreach($tournaments as $tourneyName => $opponents)
+  {
+    foreach($opponents as $oppName => $players)
+    {
+      uasort($players, function($a,$b) {
+        $aPercent = $a['ds'] / $a['points'];
+        $bPercent = $b['ds'] / $b['points'];
+        if ($aPercent == $bPercent)
+        {
+          return $a['points'] == $b['points'] ? 0 : ($a['points'] > $b['points'] ? -1 : 1);
+        }
+        return $aPercent > $bPercent ? -1 : 1;
+      });
+  
+      foreach($players as $player => $stats)
+      {
+        $table[] = [$tourneyName, $oppName, $player, $stats['ds'], $stats['points'], sprintf('%0.3f',$stats['ds']/$stats['points']) ];
+      }
+      //$table[] = ['---', '---', '---', '---', '---', '---'];
+    }
+    //$table[] = [' ', ' ', ' ', ' ', ' ', ' '];
+    //$table[] = [' ', ' ', ' ', ' ', ' ', ' '];
+    //$table[] = [' ', ' ', ' ', ' ', ' ', ' '];
+  }
+  
+  return $table;
 }
 
 
@@ -267,4 +360,69 @@ return;
   // one-turn O points
   // select id, tournament,opponent, concat(our_score,'-',their_score) as score, p1, p2, p3, p4, p5, p6, p7, p8 from point where line = 'O' and their_turns = 0 and our_turns = 1
   
+}
+
+
+
+function printTable($data, $columnNames = [])
+{
+  if (!$data || !is_array($data))
+  {
+    return;
+  }
+
+  $columns = getColumnsAndMaxLengths($columnNames ? array_merge($data, [$columnNames]) : $data);
+
+  $header = join(' | ', array_map(function($key, $value) {
+    return str_pad($key, $value);
+  }, $columnNames ?: array_keys($columns), $columns));
+
+  $hr = str_pad('', mb_strlen($header), '-');
+
+  echo '--' . $hr . "--\n";
+  echo '| ' . $header . " |\n";
+  echo '|-' . $hr . "-|\n";
+
+  foreach($data as $row)
+  {
+    $row = array_intersect_key($row, $columns); // only print columns that are set
+    echo '| ' . join(' | ', array_map(function($value, $length) {
+      return str_pad($value, $length);
+    }, $row, $columns)) . " |\n";
+  }
+
+  echo '--' . $hr . "--\n";
+}
+
+/**
+ * Get the lengths of each column so they can be lined up nicely for printing
+ * @return array an array of key-value pairs where the key is the column title and the value is either the length of
+ *               the longest string in that column or the length of the column title, whichever is longer
+ */
+function getColumnsAndMaxLengths($data)
+{
+  return array_reduce(
+
+    # replace each value with the length of that value
+    array_map(function($row) {
+      return array_map(function($value) {
+        return mb_strlen($value);
+      }, $row);
+    }, $data),
+
+    # find the max length of each value (or the length of the column name) across all rows
+    function($a, $b) {
+      if (!$a) $a = $b;
+      $ret = [];
+      foreach (array_keys($a) as $key)
+      {
+        $ret[$key] = max(
+          isset($a[$key]) ? $a[$key] : 0,
+          isset($b[$key]) ? $b[$key] : 0,
+          mb_strlen($key)
+        );
+      }
+      return $ret;
+    }
+  );
 }
